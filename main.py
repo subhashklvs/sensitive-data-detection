@@ -7,11 +7,10 @@ import time
 import json
 import hashlib
 from typing import Optional, List
-from contextlib import asynccontextmanager
 from fastapi import FastAPI, UploadFile, File, Form, HTTPException, Header
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse, PlainTextResponse
+from fastapi.responses import FileResponse
 from pydantic import BaseModel
 from dotenv import load_dotenv
 
@@ -35,17 +34,10 @@ from services.audit import (
     create_user, authenticate_user, get_user_by_id
 )
 
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    init_db()
-    logger.info("Application startup: Audit DB initialized.")
-    yield
-
 app = FastAPI(
     title="Sensitive Data Detection & Compliance Assistant",
     description="AI-powered tool to parse, detect, redact, and run compliance audits on sensitive files.",
-    version="1.0.0",
-    lifespan=lifespan
+    version="1.0.0"
 )
 
 # CORS configuration
@@ -61,7 +53,11 @@ app.add_middleware(
 TEMP_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "temp_uploads")
 os.makedirs(TEMP_DIR, exist_ok=True)
 
-# Database is initialized in lifespan on startup
+# Initialize Database on Startup
+@app.on_event("startup")
+def on_startup():
+    init_db()
+    logger.info("Application startup: Audit DB initialized.")
 
 # JWT Token Helpers
 SECRET_KEY = os.getenv("JWT_SECRET_KEY", "shieldaudit-super-secret-key-12345")
@@ -335,12 +331,6 @@ def health_check():
     Health check status endpoint.
     """
     return {"status": "healthy", "service": "sensitive-data-detection-assistant"}
-
-@app.get("/healthz", response_class=PlainTextResponse)
-@app.get("/_stcore/health", response_class=PlainTextResponse)
-@app.get("/health", response_class=PlainTextResponse)
-def streamlit_health():
-    return "ok"
 
 # Serve SPA Frontend
 @app.get("/")
