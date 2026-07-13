@@ -11,7 +11,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, UploadFile, File, Form, HTTPException, Header
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, PlainTextResponse
 from pydantic import BaseModel
 from dotenv import load_dotenv
 
@@ -335,6 +335,12 @@ def health_check():
     Health check status endpoint.
     """
     return {"status": "healthy", "service": "sensitive-data-detection-assistant"}
+
+@app.get("/healthz", response_class=PlainTextResponse)
+@app.get("/_stcore/health", response_class=PlainTextResponse)
+@app.get("/health", response_class=PlainTextResponse)
+def streamlit_health():
+    return "ok"
 
 # Serve SPA Frontend
 @app.get("/")
