@@ -329,6 +329,8 @@ async def get_audit_logs(authorization: Optional[str] = Header(None)):
         logger.error(f"Error retrieving audit logs: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
+@app.get("/healthz")
+@app.get("/_stcore/health")
 @app.get("/api/health")
 def health_check():
     """
