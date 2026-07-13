@@ -1,0 +1,416 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ShieldAudit AI - Sensitive Data Detection & Compliance</title>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="/static/css/style.css?v=2.0.0">
+</head>
+<body>
+    <!-- Background Glowing Orbs -->
+    <div class="orb orb-1"></div>
+    <div class="orb orb-2"></div>
+    <div class="orb orb-3"></div>
+
+    <div class="app-container">
+        <!-- Sidebar Navigation -->
+        <aside class="sidebar">
+            <div class="brand">
+                <i class="fa-solid fa-shield-halved logo-icon"></i>
+                <div class="brand-text">
+                    <h1>ShieldAudit AI</h1>
+                    <span>Compliance Suite</span>
+                </div>
+            </div>
+
+            <nav class="nav-menu">
+                <button class="nav-item active" data-tab="dashboard">
+                    <i class="fa-solid fa-chart-line"></i>
+                    <span>Dashboard</span>
+                </button>
+                <button class="nav-item" data-tab="chat" id="nav-chat-btn" disabled>
+                    <i class="fa-solid fa-comments"></i>
+                    <span>Q&A Assistant</span>
+                    <span class="lock-icon"><i class="fa-solid fa-lock"></i></span>
+                </button>
+                <button class="nav-item" data-tab="masker" id="nav-masker-btn" disabled>
+                    <i class="fa-solid fa-mask"></i>
+                    <span>Document Masker</span>
+                    <span class="lock-icon"><i class="fa-solid fa-lock"></i></span>
+                </button>
+                <button class="nav-item" data-tab="audit">
+                    <i class="fa-solid fa-clipboard-list"></i>
+                    <span>Security Audit Logs</span>
+                </button>
+                <button class="nav-item" data-tab="profile">
+                    <i class="fa-solid fa-user"></i>
+                    <span>Profile</span>
+                </button>
+            </nav>
+
+            <div class="sidebar-footer">
+                <div class="status-indicator">
+                    <span class="pulse-green"></span>
+                    <span>System Online</span>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content Area -->
+        <main class="main-content">
+            <!-- App Header -->
+            <header class="app-header">
+                <div class="header-title">
+                    <h2 id="page-title">Compliance Dashboard</h2>
+                    <p id="page-subtitle">Upload documents to scan for PII, financial risk, and compliance exposure.</p>
+                </div>
+                <div class="header-actions">
+                    <div class="user-display" id="user-display-header" style="display: flex; align-items: center; gap: 8px;">
+                        <i class="fa-solid fa-circle-user text-blue" style="font-size: 18px;"></i>
+                        <span id="header-username" style="font-weight: 500; font-size: 13.5px; color: var(--text-primary);">Guest</span>
+                    </div>
+                </div>
+            </header>
+
+            <!-- Tab: Dashboard -->
+            <section class="tab-content active" id="tab-dashboard">
+                <!-- File Upload Container -->
+                <div class="upload-container glass-panel">
+                    <div class="drop-zone" id="drop-zone">
+                        <i class="fa-solid fa-cloud-arrow-up upload-icon"></i>
+                        <h3>Drag & drop your document here</h3>
+                        <p>Supports PDF, TXT, and CSV formats (Max 15MB)</p>
+                        <div class="or-divider"><span>OR</span></div>
+                        <label for="file-input" class="btn btn-primary">Browse Files</label>
+                        <input type="file" id="file-input" accept=".pdf,.txt,.csv" style="display: none;">
+                    </div>
+                    
+                    <!-- Upload Loading State -->
+                    <div class="upload-loading" id="upload-loading" style="display: none;">
+                        <div class="spinner"></div>
+                        <h4>Analyzing Document Content...</h4>
+                        <p>Extracting text, running regex models, and generating AI safety classification.</p>
+                        <div class="progress-bar-container">
+                            <div class="progress-bar" id="upload-progress" style="width: 0%;"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Analysis Results Section (Hidden until upload) -->
+                <div class="results-container" id="results-container" style="display: none;">
+                    <!-- Risk & Overview row -->
+                    <div class="grid-2">
+                        <!-- Risk Score Card -->
+                        <div class="glass-panel risk-card" id="risk-card-element">
+                            <h3>Compliance Risk Classification</h3>
+                            <div class="risk-meter-container">
+                                <svg class="risk-svg" viewBox="0 0 100 100">
+                                    <circle class="risk-bg" cx="50" cy="50" r="40"></circle>
+                                    <circle class="risk-fill" id="risk-score-circle" cx="50" cy="50" r="40" stroke-dasharray="251" stroke-dashoffset="251"></circle>
+                                </svg>
+                                <div class="risk-text">
+                                    <span id="risk-score-value">0</span>
+                                    <span class="risk-label">RISK SCORE</span>
+                                </div>
+                            </div>
+                            <div class="risk-level-badge" id="risk-level-badge">LOW RISK</div>
+                        </div>
+
+                        <!-- Document Metadata -->
+                        <div class="glass-panel metadata-card">
+                            <h3>Document Metadata</h3>
+                            <div class="meta-list">
+                                <div class="meta-item">
+                                    <span class="meta-label">File Name:</span>
+                                    <span class="meta-val" id="meta-filename">-</span>
+                                </div>
+                                <div class="meta-item">
+                                    <span class="meta-label">File Type:</span>
+                                    <span class="meta-val" id="meta-filetype">-</span>
+                                </div>
+                                <div class="meta-item">
+                                    <span class="meta-label">Detections:</span>
+                                    <span class="meta-val highlight" id="meta-detections">0</span>
+                                </div>
+                                <div class="meta-item">
+                                    <span class="meta-label">Risk Rating:</span>
+                                    <span class="meta-val" id="meta-rating">-</span>
+                                </div>
+                            </div>
+                            <!-- Small chart summary -->
+                            <div class="chart-container-sm">
+                                <canvas id="findings-chart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Metrics Grid -->
+                    <div class="metrics-grid" id="metrics-grid">
+                        <!-- Dynamic metrics cards injected here -->
+                    </div>
+
+                    <!-- Findings & Audit Tabs -->
+                    <div class="glass-panel details-panel">
+                        <div class="details-header-tabs">
+                            <button class="details-tab-btn active" data-subtab="findings-table">Sensitive Findings</button>
+                            <button class="details-tab-btn" data-subtab="compliance-report">Compliance Audit</button>
+                        </div>
+
+                        <!-- Sub-tab: Findings Table -->
+                        <div class="details-tab-content active" id="subtab-findings-table">
+                            <div class="table-container">
+                                <table class="findings-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Type</th>
+                                            <th>Value</th>
+                                            <th>Context</th>
+                                            <th>Source</th>
+                                            <th>Confidence</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="findings-table-body">
+                                        <!-- Injected rows -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <!-- Sub-tab: Compliance Report -->
+                        <div class="details-tab-content" id="subtab-compliance-report">
+                            <div class="compliance-report-layout">
+                                <div class="report-section observations-section">
+                                    <h4><i class="fa-solid fa-eye text-blue"></i> Compliance Observations</h4>
+                                    <ul id="compliance-observations-list">
+                                        <!-- Injected items -->
+                                    </ul>
+                                </div>
+                                <div class="report-section risks-section">
+                                    <h4><i class="fa-solid fa-triangle-exclamation text-orange"></i> Security Risks</h4>
+                                    <ul id="compliance-risks-list">
+                                        <!-- Injected items -->
+                                    </ul>
+                                </div>
+                                <div class="report-section remediation-section">
+                                    <h4><i class="fa-solid fa-circle-check text-green"></i> Suggested Remediation</h4>
+                                    <ul id="compliance-remediation-list">
+                                        <!-- Injected items -->
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Tab: Q&A Assistant -->
+            <section class="tab-content" id="tab-chat">
+                <div class="chat-wrapper glass-panel">
+                    <div class="chat-messages" id="chat-messages">
+                        <!-- Messages injected here -->
+                    </div>
+                    
+                    <!-- Suggestions Grid -->
+                    <div class="chat-suggestions-container">
+                        <p class="suggestions-title">Quick Questions:</p>
+                        <div class="chat-suggestions" id="chat-suggestions">
+                            <button class="suggestion-btn">What sensitive data exists in the document?</button>
+                            <button class="suggestion-btn">Are there any email addresses?</button>
+                            <button class="suggestion-btn">Summarize this document.</button>
+                            <button class="suggestion-btn">What compliance risks are identified?</button>
+                        </div>
+                    </div>
+
+                    <!-- Chat Input -->
+                    <div class="chat-input-container">
+                        <textarea class="chat-input" id="chat-input" placeholder="Ask a question about the document..." rows="1"></textarea>
+                        <button class="btn btn-primary btn-round" id="chat-send-btn">
+                            <i class="fa-solid fa-paper-plane"></i>
+                        </button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Tab: Document Masker -->
+            <section class="tab-content" id="tab-masker">
+                <div class="grid-2-equal">
+                    <!-- Left: Original -->
+                    <div class="glass-panel text-preview-panel">
+                        <div class="preview-header">
+                            <h3>Original Document Content</h3>
+                            <button class="btn btn-secondary btn-sm" id="btn-copy-original"><i class="fa-solid fa-copy"></i> Copy</button>
+                        </div>
+                        <div class="text-preview scrollable" id="original-text-preview">
+                            <!-- Raw text -->
+                        </div>
+                    </div>
+
+                    <!-- Right: Redacted -->
+                    <div class="glass-panel text-preview-panel highlight-border">
+                        <div class="preview-header">
+                            <h3>Redacted Document Content</h3>
+                            <div class="preview-actions">
+                                <button class="btn btn-secondary btn-sm" id="btn-copy-redacted"><i class="fa-solid fa-copy"></i> Copy</button>
+                                <div class="dropdown-container">
+                                    <button class="btn btn-primary btn-sm" id="btn-download-redacted"><i class="fa-solid fa-download"></i> Download <i class="fa-solid fa-chevron-down" style="font-size: 10px; margin-left: 4px;"></i></button>
+                                    <div class="dropdown-menu" id="download-dropdown">
+                                        <button class="dropdown-item" id="download-pdf"><i class="fa-solid fa-file-pdf text-red"></i> PDF Document (.pdf)</button>
+                                        <button class="dropdown-item" id="download-txt"><i class="fa-solid fa-file-lines text-blue"></i> Plain Text (.txt)</button>
+                                        <button class="dropdown-item" id="download-csv" style="display: none;"><i class="fa-solid fa-file-csv text-green"></i> CSV Spreadsheet (.csv)</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="text-preview scrollable redacted-bg" id="redacted-text-preview">
+                            <!-- Redacted text -->
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Tab: Security Audit Logs -->
+            <section class="tab-content" id="tab-audit">
+                <div class="glass-panel audit-panel">
+                    <div class="audit-header">
+                        <h3>Security Audit Log</h3>
+                        <button class="btn btn-secondary" id="btn-refresh-logs">
+                            <i class="fa-solid fa-rotate"></i> Refresh Logs
+                        </button>
+                    </div>
+                    <div class="table-container mt-20">
+                        <table class="findings-table">
+                            <thead>
+                                <tr>
+                                    <th>Timestamp</th>
+                                    <th>Action</th>
+                                    <th>File Name</th>
+                                    <th>File Type</th>
+                                    <th>Risk Level</th>
+                                    <th>Risk Score</th>
+                                    <th>Findings Count</th>
+                                    <th>Details</th>
+                                </tr>
+                            </thead>
+                            <tbody id="audit-table-body">
+                                <!-- Audit records injected here -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Tab: Profile -->
+            <section class="tab-content" id="tab-profile">
+                <div class="glass-panel profile-panel">
+                    <h3>User Profile</h3>
+                    <p class="profile-desc">Account information for the active ShieldAudit AI session.</p>
+                    
+                    <div class="profile-details mt-20">
+                        <div class="profile-avatar-row" style="display: flex; align-items: center; gap: 16px; margin-bottom: 24px;">
+                            <div class="avatar-large" style="width: 64px; height: 64px; border-radius: 50%; background: linear-gradient(135deg, var(--color-primary), var(--color-accent)); display: flex; align-items: center; justify-content: center; font-size: 24px; font-weight: 700; color: white;">
+                                <span id="profile-avatar-letter">U</span>
+                            </div>
+                            <div>
+                                <h4 id="profile-display-username" style="font-size: 18px; font-weight: 700; color: var(--text-primary);">Username</h4>
+                                <p id="profile-display-email" style="font-size: 13px; color: var(--text-secondary);">email@example.com</p>
+                            </div>
+                        </div>
+
+                        <div class="meta-list" style="max-width: 400px; margin-bottom: 30px;">
+                            <div class="meta-item">
+                                <span class="meta-label">Account ID:</span>
+                                <span class="meta-val" id="profile-id">-</span>
+                            </div>
+                            <div class="meta-item">
+                                <span class="meta-label">Joined Date:</span>
+                                <span class="meta-val" id="profile-joined">-</span>
+                            </div>
+                        </div>
+
+                        <div class="form-actions mt-30">
+                            <button class="btn btn-secondary" id="btn-logout" style="border-color: rgba(239, 68, 68, 0.2); color: #ef4444;">
+                                <i class="fa-solid fa-right-from-bracket"></i> Sign Out
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Auth Container -->
+    <div class="auth-container" id="auth-container" style="display: none;">
+        <div class="auth-card glass-panel">
+            <div class="auth-header">
+                <i class="fa-solid fa-shield-halved auth-logo"></i>
+                <h2>ShieldAudit AI</h2>
+                <p id="auth-subtitle">Sign in to scan and audit sensitive files.</p>
+            </div>
+            
+            <!-- Login Form -->
+            <form id="login-form" class="auth-form">
+                <div class="form-group">
+                    <label for="login-username">Username or Email</label>
+                    <div class="password-input-container">
+                        <input type="text" id="login-username" placeholder="Enter username or email" required>
+                    </div>
+                </div>
+                <div class="form-group mt-20">
+                    <label for="login-password">Password</label>
+                    <div class="password-input-container">
+                        <input type="password" id="login-password" placeholder="Enter password" required>
+                    </div>
+                </div>
+                <button type="submit" class="btn btn-primary w-100 mt-30">
+                    Sign In <i class="fa-solid fa-arrow-right-to-bracket"></i>
+                </button>
+                <p class="auth-switch-text mt-20">
+                    Don't have an account? <span id="switch-to-register">Create one</span>
+                </p>
+            </form>
+
+            <!-- Register Form -->
+            <form id="register-form" class="auth-form" style="display: none;">
+                <div class="form-group">
+                    <label for="register-username">Username</label>
+                    <div class="password-input-container">
+                        <input type="text" id="register-username" placeholder="Choose a username" required>
+                    </div>
+                </div>
+                <div class="form-group mt-20">
+                    <label for="register-email">Email Address</label>
+                    <div class="password-input-container">
+                        <input type="email" id="register-email" placeholder="email@example.com" required>
+                    </div>
+                </div>
+                <div class="form-group mt-20">
+                    <label for="register-password">Password</label>
+                    <div class="password-input-container">
+                        <input type="password" id="register-password" placeholder="Choose a secure password" required>
+                    </div>
+                </div>
+                <button type="submit" class="btn btn-primary w-100 mt-30">
+                    Create Account <i class="fa-solid fa-user-plus"></i>
+                </button>
+                <p class="auth-switch-text mt-20">
+                    Already have an account? <span id="switch-to-login">Sign in</span>
+                </p>
+            </form>
+        </div>
+    </div>
+
+    <!-- jsPDF Library -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <!-- Custom JS -->
+    <script src="/static/js/app.js?v=2.0.0"></script>
+</body>
+</html>

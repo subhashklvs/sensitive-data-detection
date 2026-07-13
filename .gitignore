@@ -1,0 +1,18 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Local configuration
+.env
+
+# Database files
+audit.db
+audit.db-journal
+
+# Temporary directories
+temp_uploads/
+
+# OS generated files
+.DS_Store
+Thumbs.db

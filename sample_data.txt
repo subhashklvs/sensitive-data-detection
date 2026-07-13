@@ -1,0 +1,47 @@
+CONFIDENTIAL MEETING MEMORANDUM
+DATE: October 14, 2026
+SUBJECT: Project Horizon Strategic Development and Core Credentials
+
+This document is strictly confidential and proprietary to ShieldAudit Enterprises.
+
+1. EXECUTIVE OVERVIEW & STRATEGIC OUTLINE
+During the Q3 board review, we approved the initial roadmap for Project Horizon.
+The acquisition budget for purchasing our competitor, Acme Tech Corp, is set at $12,500,000.
+We will route these transition funds via our main corporate account.
+This document contains the staging keys and administrative contact list for the operations team.
+
+2. COMPLIANCE & ADMINISTRATIVE CONTACTS
+Primary Auditor:
+Name: Devashish Sharma
+Email: devashish.compliance@shieldaudit-corp.com
+Internal Phone: +91 98765 43210
+Office Location: Tower C, 4th Floor, Tech Park
+Employee ID: EMP-109283
+
+Operations Lead:
+Name: Sarah Jenkins
+Email: sarah.j@shieldaudit-corp.com
+Employee ID: EMP-309182
+
+3. PAYMENT SYSTEMS & CLEARING DETAILS
+For staging operations, use the primary test merchant terminal:
+Visa Card Number: 4111 1111 1111 1111
+Expiration: 12/29
+CVV: 098
+
+All transition fee payouts are settled using the following central treasury registry:
+Bank Name: National Union Bank of India
+IFSC Code: NUBI0002981
+Corporate Account Number: 918204918203
+Account Holder Name: ShieldAudit Treasury Services
+
+4. NATIONAL IDENTIFICATION CHECKS
+For Director Verification:
+Aadhaar Number: 3610 9482 7186
+PAN Card Number: ASDPE2094G
+
+5. CORE SECURITY CREDENTIALS
+Staging Groq API Key (do not push to public repositories):
+gsk_yA72_mock_groq_key_91823908123098123098
+Secondary SSH Tunnel Password:
+pass_temp_horizon_2026!
