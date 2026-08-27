@@ -2,7 +2,7 @@ import os
 import logging
 import base64
 import pandas as pd
-import fitz  # PyMuPDF
+import pymupdf
 from groq import Groq
 
 logger = logging.getLogger(__name__)
@@ -49,10 +49,10 @@ def parse_csv(file_path: str) -> tuple[str, list[dict]]:
         return "".join(lines), records
 
 def parse_pdf_text_only(file_path: str) -> str:
-    """Extracts text from a PDF file using PyMuPDF (fitz)."""
+    """Extracts text from a PDF file using PyMuPDF."""
     text = ""
     try:
-        with fitz.open(file_path) as doc:
+        with pymupdf.open(file_path) as doc:
             for page in doc:
                 text += page.get_text() + "\n"
     except Exception as e:
@@ -73,7 +73,7 @@ def ocr_pdf_with_groq(file_path: str, api_key: str) -> str:
         client = Groq(api_key=api_key)
         extracted_text = []
 
-        with fitz.open(file_path) as doc:
+        with pymupdf.open(file_path) as doc:
             # To avoid hitting rate limits or taking too long, we process up to 10 pages in OCR fallback
             max_pages = min(len(doc), 10)
             if len(doc) > 10:
@@ -82,7 +82,7 @@ def ocr_pdf_with_groq(file_path: str, api_key: str) -> str:
             for i in range(max_pages):
                 page = doc.load_page(i)
                 # Render page to an image (zoom=2 for better resolution/OCR quality)
-                mat = fitz.Matrix(2.0, 2.0)
+                mat = pymupdf.Matrix(2.0, 2.0)
                 pix = page.get_pixmap(matrix=mat)
                 img_data = pix.tobytes("png")
 
