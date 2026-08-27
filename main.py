@@ -335,6 +335,18 @@ def health_check():
     """
     return {"status": "healthy", "service": "sensitive-data-detection-assistant"}
 
+@app.get("/_stcore/health")
+def st_health_check():
+    return {"status": "healthy"}
+
+@app.get("/_stcore/healthz")
+def st_healthz_check():
+    return {"status": "healthy"}
+
+@app.get("/healthz")
+def healthz_check():
+    return {"status": "healthy"}
+
 # Serve SPA Frontend
 @app.get("/")
 def read_index():
