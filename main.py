@@ -34,10 +34,19 @@ from services.audit import (
     create_user, authenticate_user, get_user_by_id
 )
 
+from contextlib import asynccontextmanager
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    init_db()
+    logger.info("Application startup: Audit DB initialized.")
+    yield
+
 app = FastAPI(
     title="Sensitive Data Detection & Compliance Assistant",
     description="AI-powered tool to parse, detect, redact, and run compliance audits on sensitive files.",
-    version="1.0.0"
+    version="1.0.0",
+    lifespan=lifespan
 )
 
 # CORS configuration
@@ -52,12 +61,6 @@ app.add_middleware(
 # Ensure temp directory exists
 TEMP_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "temp_uploads")
 os.makedirs(TEMP_DIR, exist_ok=True)
-
-# Initialize Database on Startup
-@app.on_event("startup")
-def on_startup():
-    init_db()
-    logger.info("Application startup: Audit DB initialized.")
 
 # JWT Token Helpers
 SECRET_KEY = os.getenv("JWT_SECRET_KEY", "shieldaudit-super-secret-key-12345")
