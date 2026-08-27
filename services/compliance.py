@@ -141,9 +141,11 @@ def generate_compliance_report(text: str, findings: list[dict], api_key: str = N
     """
     
     try:
+        from services.model_resolver import get_groq_model
+        resolved_model = get_groq_model(api_key)
         client = Groq(api_key=api_key)
         response = client.chat.completions.create(
-            model="llama-3.3-70b-versatile",
+            model=resolved_model,
             messages=[
                 {"role": "user", "content": prompt}
             ],

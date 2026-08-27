@@ -280,8 +280,12 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     });
 
-    dropZone.addEventListener("click", () => {
-        fileInput.click();
+    dropZone.addEventListener("click", (e) => {
+        // Only click the input if we clicked the dropZone itself or non-interactive children,
+        // avoiding label or input itself to prevent double-clicks/infinite loops
+        if (e.target !== fileInput && !e.target.closest("label")) {
+            fileInput.click();
+        }
     });
 
     fileInput.addEventListener("change", (e) => {
