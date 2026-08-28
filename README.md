@@ -24,7 +24,7 @@ Equipped with a hybrid regex-LLM detection architecture and strict mathematical 
 ## 📁 Repository Structure
 
 ```
-├── main.py                 # FastAPI Application Server (CORS, REST API, SPA Static router)
+├── app.py                  # FastAPI Application Server (CORS, REST API, SPA Static router)
 ├── requirements.txt        # Python dependency list
 ├── .env.example            # Environment configuration template
 ├── audit.db                # Auto-generated SQLite audit log database (created on run)
@@ -77,7 +77,7 @@ PORT=8000
 ### Step 4: Run the Application
 Start the FastAPI server:
 ```bash
-python -m uvicorn main:app --port 8000 --host 127.0.0.1
+python -m uvicorn app:app --port 8000 --host 127.0.0.1
 ```
 Open your browser and navigate to **`http://127.0.0.1:8000`** to interact with the web dashboard.
 
