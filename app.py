@@ -355,7 +355,259 @@ def read_index():
         return FileResponse(index_path)
     return {"message": "Welcome. The static frontend files are missing under /static folder."}
 
-# Mount static directory to serve CSS, JS, etc.
+# Mount static directory to serve CSS, JS, etc. (fallback for FastAPI mode)
 static_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "static")
 if os.path.exists(static_path):
-    app.mount("/static", StaticFiles(directory=static_path), name="static")
+    app.mount("/", StaticFiles(directory=static_path), name="static")
+
+# Streamlit Component Bridge Handler
+def check_streamlit():
+    try:
+        from streamlit.runtime.scriptrunner import get_script_run_ctx
+        if get_script_run_ctx() is not None:
+            return True
+    except Exception:
+        pass
+    try:
+        from streamlit.runtime.scriptrunner_utils.script_run_context import get_script_run_ctx
+        if get_script_run_ctx() is not None:
+            return True
+    except Exception:
+        pass
+    return False
+
+if check_streamlit():
+    import streamlit as st
+    import streamlit.components.v1 as components
+
+    init_db()
+
+    st.set_page_config(
+        page_title="ShieldAudit AI - Sensitive Data Detection & Compliance",
+        page_icon="🛡️",
+        layout="wide",
+        initial_sidebar_state="collapsed"
+    )
+
+    st.markdown("""
+        <style>
+            #MainMenu {visibility: hidden;}
+            header {visibility: hidden;}
+            footer {visibility: hidden;}
+            .block-container {
+                padding-top: 0rem;
+                padding-bottom: 0rem;
+                padding-left: 0rem;
+                padding-right: 0rem;
+            }
+            iframe {
+                border: none;
+                width: 100%;
+                height: 100vh !important;
+            }
+        </style>
+    """, unsafe_allow_html=True)
+
+    static_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "static")
+    shieldaudit_app = components.declare_component("shieldaudit_app", path=static_dir)
+
+    if "last_response" not in st.session_state:
+        st.session_state.last_response = None
+
+    req = shieldaudit_app(last_response=st.session_state.last_response)
+
+    if req and isinstance(req, dict) and req.get("type") == "request":
+        req_id = req["requestId"]
+        url = req["url"]
+        method = req["method"]
+        headers = req.get("headers") or {}
+        body = req.get("body")
+
+        def get_auth_username(headers):
+            auth_header = headers.get("Authorization") or headers.get("authorization")
+            if auth_header and auth_header.startswith("Bearer "):
+                token = auth_header.split(" ")[1]
+                payload = verify_token(token)
+                if payload:
+                    return payload["username"], payload
+            return None, None
+
+        status = 200
+        res_body = {}
+
+        try:
+            if url == "/api/auth/login":
+                body_dict = json.loads(body) if isinstance(body, str) else body
+                user = authenticate_user(body_dict["username"], body_dict["password"])
+                if not user:
+                    res_body = {"detail": "Invalid username/email or password."}
+                    status = 401
+                else:
+                    token = create_token(user["id"], user["username"])
+                    res_body = {"token": token, "user": user}
+                    status = 200
+
+            elif url == "/api/auth/register":
+                body_dict = json.loads(body) if isinstance(body, str) else body
+                user = create_user(body_dict["username"], body_dict["email"], body_dict["password"])
+                token = create_token(user["id"], user["username"])
+                res_body = {"token": token, "user": user}
+                status = 200
+
+            elif url == "/api/auth/me":
+                username, payload = get_auth_username(headers)
+                if not username:
+                    res_body = {"detail": "Authentication required."}
+                    status = 401
+                else:
+                    user = get_user_by_id(payload["user_id"])
+                    if not user:
+                        res_body = {"detail": "User not found."}
+                        status = 404
+                    else:
+                        res_body = user
+                        status = 200
+
+            elif url == "/api/upload":
+                username, payload = get_auth_username(headers)
+                if not username:
+                    res_body = {"detail": "Authentication required."}
+                    status = 401
+                else:
+                    file_info = body.get("file") if isinstance(body, dict) else None
+                    if not file_info:
+                        res_body = {"detail": "No file uploaded."}
+                        status = 400
+                    else:
+                        filename = file_info["filename"]
+                        file_data_b64 = file_info["data"]
+                        ext = os.path.splitext(filename)[1].lower()
+
+                        if ext not in [".pdf", ".txt", ".csv"]:
+                            res_body = {"detail": f"Unsupported file type: {ext}"}
+                            status = 400
+                        else:
+                            temp_path = os.path.join(TEMP_DIR, filename)
+                            with open(temp_path, "wb") as f:
+                                f.write(base64.b64decode(file_data_b64))
+
+                            resolved_api_key = os.getenv("GROQ_API_KEY")
+                            if resolved_api_key == "YOUR_GROQ_API_KEY_HERE":
+                                resolved_api_key = None
+
+                            try:
+                                structured_data = None
+                                if ext == ".pdf":
+                                    text = parse_pdf(temp_path, groq_api_key=resolved_api_key)
+                                elif ext == ".txt":
+                                    text = parse_txt(temp_path)
+                                elif ext == ".csv":
+                                    text, structured_data = parse_csv(temp_path)
+
+                                findings = detect_sensitive_data(text, api_key=resolved_api_key)
+                                compliance_report = generate_compliance_report(text, findings, api_key=resolved_api_key)
+                                redacted_text = mask_document_text(text, findings)
+
+                                log_event(
+                                    action="DOCUMENT_UPLOAD",
+                                    file_name=filename,
+                                    file_type=ext,
+                                    risk_level=compliance_report["risk_level"],
+                                    risk_score=compliance_report["risk_score"],
+                                    findings_count=len(findings),
+                                    details=f"File Size: {os.path.getsize(temp_path)} bytes.",
+                                    username=username
+                                )
+
+                                res_body = {
+                                    "file_name": filename,
+                                    "file_type": ext,
+                                    "text": text,
+                                    "structured_data": structured_data,
+                                    "findings": findings,
+                                    "compliance_report": compliance_report,
+                                    "redacted_text": redacted_text
+                                }
+                                status = 200
+                            finally:
+                                if os.path.exists(temp_path):
+                                    os.remove(temp_path)
+
+            elif url == "/api/chat":
+                username, payload = get_auth_username(headers)
+                if not username:
+                    res_body = {"detail": "Authentication required."}
+                    status = 401
+                else:
+                    body_dict = json.loads(body) if isinstance(body, str) else body
+                    from services.rag import answer_document_query
+                    resolved_api_key = os.getenv("GROQ_API_KEY")
+                    if resolved_api_key == "YOUR_GROQ_API_KEY_HERE":
+                        resolved_api_key = None
+
+                    answer = answer_document_query(
+                        document_text=body_dict["document_text"],
+                        query=body_dict["query"],
+                        chat_history=body_dict.get("chat_history", []),
+                        api_key=resolved_api_key
+                    )
+
+                    log_event(
+                        action="Q&A_QUERY",
+                        details=f"User Query: '{body_dict['query'][:100]}...'",
+                        username=username
+                    )
+
+                    res_body = {"answer": answer}
+                    status = 200
+
+            elif url == "/api/redact":
+                username, payload = get_auth_username(headers)
+                if not username:
+                    res_body = {"detail": "Authentication required."}
+                    status = 401
+                else:
+                    body_dict = json.loads(body) if isinstance(body, str) else body
+                    masked_text = mask_document_text(body_dict["document_text"], body_dict["findings"])
+
+                    log_event(
+                        action="REDACT_DOCUMENT",
+                        findings_count=len(body_dict["findings"]),
+                        details=f"Redacted {len(body_dict['findings'])} items.",
+                        username=username
+                    )
+
+                    res_body = {"redacted_text": masked_text}
+                    status = 200
+
+            elif url == "/api/logs":
+                username, payload = get_auth_username(headers)
+                if not username:
+                    res_body = {"detail": "Authentication required."}
+                    status = 401
+                else:
+                    logs = get_logs(limit=100, username=username)
+                    res_body = {"logs": logs}
+                    status = 200
+
+            else:
+                res_body = {"detail": f"Route {url} not found."}
+                status = 404
+
+        except ValueError as val_err:
+            res_body = {"detail": str(val_err)}
+            status = 400
+        except Exception as err:
+            logger.error(f"Error handling bridged API request {url}: {err}", exc_info=True)
+            res_body = {"detail": str(err)}
+            status = 500
+
+        st.session_state.last_response = {
+            "type": "response",
+            "requestId": req_id,
+            "status": status,
+            "headers": {"Content-Type": "application/json"},
+            "body": res_body
+        }
+        st.rerun()
+

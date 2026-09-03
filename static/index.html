@@ -12,8 +12,148 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <!-- Chart.js -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Streamlit custom component bridge -->
+    <script>
+        (function() {
+            const isStreamlit = window.parent !== window;
+            if (isStreamlit) {
+                const Streamlit = {
+                    setComponentReady: function() {
+                        window.parent.postMessage({
+                            isStreamlitMessage: true,
+                            type: "streamlit:componentReady",
+                            apiVersion: 1
+                        }, "*");
+                    },
+                    setFrameHeight: function(height) {
+                        window.parent.postMessage({
+                            isStreamlitMessage: true,
+                            type: "streamlit:setFrameHeight",
+                            height: height
+                        }, "*");
+                    },
+                    setComponentValue: function(value) {
+                        window.parent.postMessage({
+                            isStreamlitMessage: true,
+                            type: "streamlit:setComponentValue",
+                            value: value
+                        }, "*");
+                    }
+                };
+
+                Streamlit.setComponentReady();
+                
+                const updateHeight = () => {
+                    Streamlit.setFrameHeight(window.innerHeight || 800);
+                };
+                updateHeight();
+                window.addEventListener('resize', updateHeight);
+                setInterval(updateHeight, 500);
+
+                const pendingRequests = {};
+                let requestCounter = 0;
+
+                window.addEventListener("message", (event) => {
+                    if (event.data && event.data.type === "streamlit:render") {
+                        const args = event.data.args;
+                        if (args && args.last_response) {
+                            const response = args.last_response;
+                            const reqId = response.requestId;
+                            if (pendingRequests[reqId]) {
+                                const { resolve, reject } = pendingRequests[reqId];
+                                delete pendingRequests[reqId];
+                                
+                                const mockResponse = new Response(JSON.stringify(response.body), {
+                                    status: response.status,
+                                    headers: new Headers(response.headers)
+                                });
+                                resolve(mockResponse);
+                            }
+                        }
+                    }
+                });
+
+                function fileToBase64(file) {
+                    return new Promise((resolve, reject) => {
+                        const reader = new FileReader();
+                        reader.readAsDataURL(file);
+                        reader.onload = () => {
+                            const base64 = reader.result.split(',')[1];
+                            resolve(base64);
+                        };
+                        reader.onerror = error => reject(error);
+                    });
+                }
+
+                async function serializeFormData(formData) {
+                    const result = {};
+                    for (const [key, value] of formData.entries()) {
+                        if (value instanceof File) {
+                            const base64 = await fileToBase64(value);
+                            result[key] = {
+                                filename: value.name,
+                                type: value.type,
+                                data: base64
+                            };
+                        } else {
+                            result[key] = value;
+                        }
+                    }
+                    return result;
+                }
+
+                const originalFetch = window.fetch;
+                window.fetch = async function(url, options = {}) {
+                    if (typeof url === 'string' && url.startsWith('/api/')) {
+                        return new Promise((resolve, reject) => {
+                            const requestId = ++requestCounter;
+                            pendingRequests[requestId] = { resolve, reject };
+
+                            let headers = {};
+                            if (options.headers) {
+                                if (options.headers instanceof Headers) {
+                                    options.headers.forEach((value, key) => { headers[key] = value; });
+                                } else if (Array.isArray(options.headers)) {
+                                    options.headers.forEach(([key, value]) => { headers[key] = value; });
+                                } else {
+                                    headers = options.headers;
+                                }
+                            }
+
+                            let body = options.body;
+                            if (body && body instanceof FormData) {
+                                serializeFormData(body).then(serializedBody => {
+                                    Streamlit.setComponentValue({
+                                        type: "request",
+                                        requestId: requestId,
+                                        url: url,
+                                        method: options.method || "GET",
+                                        headers: headers,
+                                        body: serializedBody
+                                    });
+                                }).catch(err => {
+                                    reject(err);
+                                });
+                                return;
+                            }
+
+                            Streamlit.setComponentValue({
+                                type: "request",
+                                requestId: requestId,
+                                url: url,
+                                method: options.method || "GET",
+                                headers: headers,
+                                body: body
+                            });
+                        });
+                    }
+                    return originalFetch.apply(this, arguments);
+                };
+            }
+        })();
+    </script>
     <!-- Custom CSS -->
-    <link rel="stylesheet" href="/static/css/style.css?v=2.0.0">
+    <link rel="stylesheet" href="css/style.css?v=2.0.0">
 </head>
 <body>
     <!-- Background Glowing Orbs -->
@@ -411,6 +551,6 @@
     <!-- jsPDF Library -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <!-- Custom JS -->
-    <script src="/static/js/app.js?v=2.0.0"></script>
+    <script src="js/app.js?v=2.0.0"></script>
 </body>
 </html>
