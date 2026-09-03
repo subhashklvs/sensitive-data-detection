@@ -42,7 +42,7 @@ async def lifespan(app: FastAPI):
     logger.info("Application startup: Audit DB initialized.")
     yield
 
-app = FastAPI(
+fastapi_app = FastAPI(
     title="Sensitive Data Detection & Compliance Assistant",
     description="AI-powered tool to parse, detect, redact, and run compliance audits on sensitive files.",
     version="1.0.0",
@@ -50,7 +50,7 @@ app = FastAPI(
 )
 
 # CORS configuration
-app.add_middleware(
+fastapi_app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
     allow_credentials=True,
@@ -136,7 +136,7 @@ class RedactRequest(BaseModel):
 
 # Authentication Endpoints
 
-@app.post("/api/auth/register")
+@fastapi_app.post("/api/auth/register")
 async def register(req: UserRegister):
     try:
         user = create_user(req.username, req.email, req.password)
@@ -147,7 +147,7 @@ async def register(req: UserRegister):
     except Exception as e:
         raise HTTPException(status_code=500, detail="Failed to create user account.")
 
-@app.post("/api/auth/login")
+@fastapi_app.post("/api/auth/login")
 async def login(req: UserLogin):
     user = authenticate_user(req.username, req.password)
     if not user:
@@ -155,7 +155,7 @@ async def login(req: UserLogin):
     token = create_token(user["id"], user["username"])
     return {"token": token, "user": user}
 
-@app.get("/api/auth/me")
+@fastapi_app.get("/api/auth/me")
 async def get_me(authorization: Optional[str] = Header(None)):
     payload = await get_current_user(authorization)
     user = get_user_by_id(payload["user_id"])
@@ -165,7 +165,7 @@ async def get_me(authorization: Optional[str] = Header(None)):
 
 # Core API Endpoints
 
-@app.post("/api/upload")
+@fastapi_app.post("/api/upload")
 async def upload_document(
     file: UploadFile = File(...),
     authorization: Optional[str] = Header(None)
@@ -256,7 +256,7 @@ async def upload_document(
             except Exception as e:
                 logger.error(f"Failed to delete temp file {temp_path}: {e}")
 
-@app.post("/api/chat")
+@fastapi_app.post("/api/chat")
 async def chat_with_document(req: ChatRequest, authorization: Optional[str] = Header(None)):
     """
     Asks a question about the document text. Utilizes Groq API with document context.
@@ -290,7 +290,7 @@ async def chat_with_document(req: ChatRequest, authorization: Optional[str] = He
         logger.error(f"Error during Q&A: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
-@app.post("/api/redact")
+@fastapi_app.post("/api/redact")
 async def redact_content(req: RedactRequest, authorization: Optional[str] = Header(None)):
     """
     Direct endpoint to redact document text based on a custom/provided list of findings.
@@ -314,7 +314,7 @@ async def redact_content(req: RedactRequest, authorization: Optional[str] = Head
         logger.error(f"Error during redaction: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
-@app.get("/api/logs")
+@fastapi_app.get("/api/logs")
 async def get_audit_logs(authorization: Optional[str] = Header(None)):
     """
     Fetches the security audit logs from SQLite database.
@@ -328,27 +328,27 @@ async def get_audit_logs(authorization: Optional[str] = Header(None)):
         logger.error(f"Error retrieving audit logs: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
-@app.get("/api/health")
+@fastapi_app.get("/api/health")
 def health_check():
     """
     Health check status endpoint.
     """
     return {"status": "healthy", "service": "sensitive-data-detection-assistant"}
 
-@app.get("/_stcore/health")
+@fastapi_app.get("/_stcore/health")
 def st_health_check():
     return {"status": "healthy"}
 
-@app.get("/_stcore/healthz")
+@fastapi_app.get("/_stcore/healthz")
 def st_healthz_check():
     return {"status": "healthy"}
 
-@app.get("/healthz")
+@fastapi_app.get("/healthz")
 def healthz_check():
     return {"status": "healthy"}
 
 # Serve SPA Frontend
-@app.get("/")
+@fastapi_app.get("/")
 def read_index():
     index_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "static", "index.html")
     if os.path.exists(index_path):
@@ -358,7 +358,7 @@ def read_index():
 # Mount static directory to serve CSS, JS, etc. (fallback for FastAPI mode)
 static_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "static")
 if os.path.exists(static_path):
-    app.mount("/", StaticFiles(directory=static_path), name="static")
+    fastapi_app.mount("/", StaticFiles(directory=static_path), name="static")
 
 # Streamlit Component Bridge Handler
 def check_streamlit():
