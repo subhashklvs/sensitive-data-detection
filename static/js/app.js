@@ -233,15 +233,12 @@ document.addEventListener("DOMContentLoaded", () => {
                 throw new Error(err.detail || "Registration failed.");
             }
             
-            const data = await res.json();
-            state.token = data.token;
-            state.user = data.user;
-            localStorage.setItem("shieldaudit_token", data.token);
-            localStorage.setItem("shieldaudit_user", JSON.stringify(data.user));
-            
             registerForm.reset();
-            checkAuth();
-            switchTab("dashboard");
+            registerForm.style.display = "none";
+            loginForm.style.display = "block";
+            document.getElementById("login-username").value = usernameVal;
+            document.getElementById("login-password").focus();
+            document.getElementById("auth-subtitle").textContent = "Account created successfully. Please sign in.";
         } catch (err) {
             alert("Error: " + err.message);
         }
