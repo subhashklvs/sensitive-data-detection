@@ -1,5 +1,5 @@
 import logging
-from groq import Groq
+from groq import Groq, RateLimitError
 
 logger = logging.getLogger(__name__)
 
@@ -116,6 +116,13 @@ def answer_document_query(
             ]
         )
         return response.choices[0].message.content.strip()
+    except RateLimitError as e:
+        logger.warning("Groq Q&A rate limit reached (HTTP %s).", e.status_code)
+        return (
+            "Groq is temporarily rate-limited for this model's token-per-minute quota. "
+            "Please wait a few seconds and try again. If this keeps happening, check "
+            "your Groq usage limits or choose another available model in GROQ_MODEL."
+        )
     except Exception as e:
         logger.error(f"Error during Q&A generation: {e}")
         return f"Sorry, I encountered an error while processing your request: {str(e)}"

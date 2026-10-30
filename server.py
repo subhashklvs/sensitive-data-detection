@@ -35,7 +35,7 @@ from services.compliance import generate_compliance_report
 from services.masker import mask_document_text
 from services.audit import (
     init_db, log_event, get_logs,
-    create_user, authenticate_user, get_user_by_id
+    create_user, authenticate_user, get_user_by_id, delete_user
 )
 
 # ── Config ───────────────────────────────────────────────────────────────────
@@ -94,6 +94,9 @@ class UserLogin(BaseModel):
     username: str
     password: str
 
+class DeleteAccountRequest(BaseModel):
+    password: str
+
 class ChatRequest(BaseModel):
     document_text: str
     query: str
@@ -140,6 +143,19 @@ async def get_me(authorization: Optional[str] = Header(None)):
     if not user:
         raise HTTPException(status_code=404, detail="User not found.")
     return user
+
+@router.delete("/api/auth/account")
+async def delete_account(
+    req: DeleteAccountRequest,
+    authorization: Optional[str] = Header(None)
+):
+    payload = await get_current_user(authorization)
+    user = authenticate_user(payload["username"], req.password)
+    if not user or user["id"] != payload["user_id"]:
+        raise HTTPException(status_code=401, detail="Incorrect password.")
+    if not delete_user(payload["user_id"]):
+        raise HTTPException(status_code=404, detail="User not found.")
+    return {"message": "Account and associated audit history deleted."}
 
 @router.post("/api/upload")
 async def upload_document(

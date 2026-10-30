@@ -154,6 +154,31 @@ def get_user_by_id(user_id: int) -> Optional[dict]:
         return None
 
 
+def delete_user(user_id: int) -> bool:
+    """Deletes a user and their associated audit history."""
+    conn = sqlite3.connect(DB_PATH)
+    try:
+        with conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT username FROM users WHERE id = ?", (user_id,))
+            row = cursor.fetchone()
+            if not row:
+                return False
+
+            cursor.execute("DELETE FROM audit_logs WHERE username = ?", (row[0],))
+            cursor.execute("DELETE FROM users WHERE id = ?", (user_id,))
+            if cursor.rowcount != 1:
+                raise RuntimeError(f"Failed to delete user {user_id}.")
+
+        logger.info("User account and associated audit history deleted: %s", user_id)
+        return True
+    except Exception:
+        logger.exception("Failed to delete user account %s.", user_id)
+        raise
+    finally:
+        conn.close()
+
+
 
 def log_event(
     action: str,

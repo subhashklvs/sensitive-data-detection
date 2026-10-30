@@ -33,6 +33,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const profileJoined = document.getElementById("profile-joined");
     const profileAvatarLetter = document.getElementById("profile-avatar-letter");
     const btnLogout = document.getElementById("btn-logout");
+    const btnDeleteAccount = document.getElementById("btn-delete-account");
     
     // Upload Elements
     const dropZone = document.getElementById("drop-zone");
@@ -251,6 +252,45 @@ document.addEventListener("DOMContentLoaded", () => {
         localStorage.removeItem("shieldaudit_token");
         localStorage.removeItem("shieldaudit_user");
         checkAuth();
+    });
+
+    btnDeleteAccount.addEventListener("click", async () => {
+        if (!window.confirm("Permanently delete your account and its audit history? This cannot be undone.")) {
+            return;
+        }
+
+        const password = window.prompt("Enter your password to confirm account deletion.");
+        if (password === null) return;
+
+        btnDeleteAccount.disabled = true;
+        try {
+            const response = await fetch("/api/auth/account", {
+                method: "DELETE",
+                headers: {
+                    "Content-Type": "application/json",
+                    "Authorization": `Bearer ${state.token}`
+                },
+                body: JSON.stringify({ password })
+            });
+            const data = await response.json();
+
+            if (!response.ok) {
+                throw new Error(data.detail || "Account deletion failed.");
+            }
+
+            state.token = "";
+            state.user = null;
+            state.currentDoc = null;
+            state.chatHistory = [];
+            localStorage.removeItem("shieldaudit_token");
+            localStorage.removeItem("shieldaudit_user");
+            checkAuth();
+            alert("Your account and its audit history have been deleted.");
+        } catch (error) {
+            alert("Unable to delete your account: " + error.message);
+        } finally {
+            btnDeleteAccount.disabled = false;
+        }
     });
 
 

@@ -34,7 +34,7 @@ from services.compliance import generate_compliance_report
 from services.masker import mask_document_text
 from services.audit import (
     init_db, log_event, get_logs,
-    create_user, authenticate_user, get_user_by_id
+    create_user, authenticate_user, get_user_by_id, delete_user
 )
 
 # ── JWT helpers ──────────────────────────────────────────────────────────────
@@ -159,6 +159,20 @@ if req and isinstance(req, dict) and req.get("type") == "request":
                 user = get_user_by_id(payload["user_id"])
                 res_body = user if user else {"detail": "User not found."}
                 status   = 200 if user else 404
+
+        elif url == "/api/auth/account":
+            username, payload = get_auth_user(headers)
+            if not username:
+                res_body, status = {"detail": "Authentication required."}, 401
+            else:
+                bd = json.loads(body) if isinstance(body, str) else body
+                user = authenticate_user(username, bd["password"])
+                if not user or user["id"] != payload["user_id"]:
+                    res_body, status = {"detail": "Incorrect password."}, 401
+                elif not delete_user(payload["user_id"]):
+                    res_body, status = {"detail": "User not found."}, 404
+                else:
+                    res_body = {"message": "Account and associated audit history deleted."}
 
         # ── Upload ───────────────────────────────────────────────────────────
         elif url == "/api/upload":
