@@ -1,6 +1,58 @@
 import logging
+import re
 
 logger = logging.getLogger(__name__)
+
+SECTION_HEADER_PATTERN = re.compile(
+    r"^[ \t]*(?:"
+    r"education(?:al background)?|academic background|qualifications|"
+    r"summary|professional summary|objective|career objective|"
+    r"experience|work experience|professional experience|employment history|"
+    r"skills|technical skills|projects|certifications|achievements|"
+    r"publications|languages|references|personal details|"
+    r"positions of responsibility"
+    r")[ \t]*:?[ \t]*$",
+    re.IGNORECASE | re.MULTILINE,
+)
+
+
+def _redact_education_sections(text: str) -> str:
+    """Replace education details with level-specific placeholders in resume sections."""
+    headers = list(SECTION_HEADER_PATTERN.finditer(text))
+    education_headers = [
+        header for header in headers
+        if re.fullmatch(
+            r"[ \t]*(?:education(?:al background)?|academic background|qualifications)[ \t]*:?[ \t]*",
+            header.group(),
+            re.IGNORECASE,
+        )
+    ]
+
+    for header in reversed(education_headers):
+        next_header = next(
+            (candidate for candidate in headers if candidate.start() > header.start()),
+            None,
+        )
+        section_end = next_header.start() if next_header else len(text)
+        section_text = text[header.end():section_end]
+        categories = (
+            ("SCHOOL", r"\b(?:school|ssc|10(?:th)?|secondary|matric(?:ulation)?)\b"),
+            ("INTERMEDIATE", r"\b(?:intermediate|12(?:th)?|higher secondary|hsc|puc|pre[- ]university)\b"),
+            ("B_TECH", r"\b(?:b\.?\s?tech|bachelor(?:'s)?|b\.?e\.?|undergraduate|engineering)\b"),
+        )
+        placeholders = [
+            f"[REDACTED_{label}_1]"
+            for label, pattern in categories
+            if re.search(pattern, section_text, re.IGNORECASE)
+        ]
+        if not placeholders:
+            placeholders = ["[REDACTED_EDUCATION_1]"]
+
+        replacement = "\n" + "\n".join(placeholders) + "\n"
+        text = text[:header.end()] + replacement + text[section_end:]
+
+    return text
+
 
 def mask_document_text(text: str, findings: list[dict]) -> str:
     """
@@ -9,9 +61,6 @@ def mask_document_text(text: str, findings: list[dict]) -> str:
     Uses offset-based replacement in descending order to prevent index shift issues,
     with a value-based fallback for findings without exact start/end offsets.
     """
-    if not findings:
-        return text
-
     # Separate findings with valid offsets from those without
     offset_findings = []
     value_only_findings = []
@@ -71,4 +120,4 @@ def mask_document_text(text: str, findings: list[dict]) -> str:
             placeholder = f"[REDACTED_{f_type}_{entity_counts[f_type]}]"
             masked_text = masked_text.replace(val, placeholder)
             
-    return masked_text
+    return _redact_education_sections(masked_text)
